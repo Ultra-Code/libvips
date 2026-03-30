@@ -9773,11 +9773,11 @@ pub const InputStream = extern struct {
         /// asynchronicity, so they are optional for inheriting classes. However, if you
         /// override one you must override all.
         pub const read_async = struct {
-            pub fn call(p_class: anytype, p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?*[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) void {
+            pub fn call(p_class: anytype, p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) void {
                 return gobject.ext.as(InputStream.Class, p_class).f_read_async.?(gobject.ext.as(InputStream, p_stream), p_buffer, p_count, p_io_priority, p_cancellable, p_callback, p_user_data);
             }
 
-            pub fn implement(p_class: anytype, p_implementation: *const fn (p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?*[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) callconv(.c) void) void {
+            pub fn implement(p_class: anytype, p_implementation: *const fn (p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) callconv(.c) void) void {
                 gobject.ext.as(InputStream.Class, p_class).f_read_async = @ptrCast(p_implementation);
             }
         };
@@ -9952,7 +9952,7 @@ pub const InputStream = extern struct {
     /// partial result will be returned, without an error.
     ///
     /// On error -1 is returned and `error` is set accordingly.
-    extern fn g_input_stream_read(p_stream: *InputStream, p_buffer: *[*]u8, p_count: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
+    extern fn g_input_stream_read(p_stream: *InputStream, p_buffer: [*]u8, p_count: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
     pub const read = g_input_stream_read;
 
     /// Tries to read `count` bytes from the stream into the buffer starting at
@@ -9974,7 +9974,7 @@ pub const InputStream = extern struct {
     /// read before the error was encountered.  This functionality is only
     /// available from C.  If you need it from another language then you must
     /// write your own loop around `gio.InputStream.read`.
-    extern fn g_input_stream_read_all(p_stream: *InputStream, p_buffer: *[*]u8, p_count: usize, p_bytes_read: *usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) c_int;
+    extern fn g_input_stream_read_all(p_stream: *InputStream, p_buffer: [*]u8, p_count: usize, p_bytes_read: *usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) c_int;
     pub const readAll = g_input_stream_read_all;
 
     /// Request an asynchronous read of `count` bytes from the stream into the
@@ -9987,7 +9987,7 @@ pub const InputStream = extern struct {
     /// Any outstanding I/O request with higher priority (lower numerical
     /// value) will be executed before an outstanding request with lower
     /// priority. Default priority is `G_PRIORITY_DEFAULT`.
-    extern fn g_input_stream_read_all_async(p_stream: *InputStream, p_buffer: *[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) void;
+    extern fn g_input_stream_read_all_async(p_stream: *InputStream, p_buffer: [*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) void;
     pub const readAllAsync = g_input_stream_read_all_async;
 
     /// Finishes an asynchronous stream read operation started with
@@ -10025,7 +10025,7 @@ pub const InputStream = extern struct {
     /// The asynchronous methods have a default fallback that uses threads to implement
     /// asynchronicity, so they are optional for inheriting classes. However, if you
     /// override one you must override all.
-    extern fn g_input_stream_read_async(p_stream: *InputStream, p_buffer: *[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) void;
+    extern fn g_input_stream_read_async(p_stream: *InputStream, p_buffer: [*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) void;
     pub const readAsync = g_input_stream_read_async;
 
     /// Like `gio.InputStream.read`, this tries to read `count` bytes from
@@ -17367,7 +17367,7 @@ pub const Socket = extern struct {
     /// `G_IO_IN` condition.
     ///
     /// On error -1 is returned and `error` is set accordingly.
-    extern fn g_socket_receive(p_socket: *Socket, p_buffer: *[*]u8, p_size: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
+    extern fn g_socket_receive(p_socket: *Socket, p_buffer: [*]u8, p_size: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
     pub const receive = g_socket_receive;
 
     /// Receives data (up to `size` bytes) from a socket.
@@ -17406,7 +17406,7 @@ pub const Socket = extern struct {
     /// `address` is owned by the caller.
     ///
     /// See `gio.Socket.receive` for additional information.
-    extern fn g_socket_receive_from(p_socket: *Socket, p_address: ?**gio.SocketAddress, p_buffer: *[*]u8, p_size: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
+    extern fn g_socket_receive_from(p_socket: *Socket, p_address: ?**gio.SocketAddress, p_buffer: [*]u8, p_size: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
     pub const receiveFrom = g_socket_receive_from;
 
     /// Receive data from a socket.  For receiving multiple messages, see
@@ -17525,7 +17525,7 @@ pub const Socket = extern struct {
     /// This behaves exactly the same as `gio.Socket.receive`, except that
     /// the choice of blocking or non-blocking behavior is determined by
     /// the `blocking` argument rather than by `socket`'s properties.
-    extern fn g_socket_receive_with_blocking(p_socket: *Socket, p_buffer: *[*]u8, p_size: usize, p_blocking: c_int, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
+    extern fn g_socket_receive_with_blocking(p_socket: *Socket, p_buffer: [*]u8, p_size: usize, p_blocking: c_int, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
     pub const receiveWithBlocking = g_socket_receive_with_blocking;
 
     /// Tries to send `size` bytes from `buffer` on the socket. This is
@@ -35034,11 +35034,11 @@ pub const PollableInputStream = opaque {
         /// The behaviour of this method is undefined if
         /// `gio.PollableInputStream.canPoll` returns `FALSE` for `stream`.
         pub const read_nonblocking = struct {
-            pub fn call(p_class: anytype, p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?*[*]u8, p_count: usize, p_error: ?*?*glib.Error) isize {
+            pub fn call(p_class: anytype, p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?[*]u8, p_count: usize, p_error: ?*?*glib.Error) isize {
                 return gobject.ext.as(PollableInputStream.Iface, p_class).f_read_nonblocking.?(gobject.ext.as(PollableInputStream, p_stream), p_buffer, p_count, p_error);
             }
 
-            pub fn implement(p_class: anytype, p_implementation: *const fn (p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?*[*]u8, p_count: usize, p_error: ?*?*glib.Error) callconv(.c) isize) void {
+            pub fn implement(p_class: anytype, p_implementation: *const fn (p_stream: *@typeInfo(@TypeOf(p_class)).pointer.child.Instance, p_buffer: ?[*]u8, p_count: usize, p_error: ?*?*glib.Error) callconv(.c) isize) void {
                 gobject.ext.as(PollableInputStream.Iface, p_class).f_read_nonblocking = @ptrCast(p_implementation);
             }
         };
@@ -35100,7 +35100,7 @@ pub const PollableInputStream = opaque {
     ///
     /// The behaviour of this method is undefined if
     /// `gio.PollableInputStream.canPoll` returns `FALSE` for `stream`.
-    extern fn g_pollable_input_stream_read_nonblocking(p_stream: *PollableInputStream, p_buffer: *[*]u8, p_count: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
+    extern fn g_pollable_input_stream_read_nonblocking(p_stream: *PollableInputStream, p_buffer: [*]u8, p_count: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) isize;
     pub const readNonblocking = g_pollable_input_stream_read_nonblocking;
 
     extern fn g_pollable_input_stream_get_type() usize;
@@ -39641,7 +39641,7 @@ pub const InputStreamClass = extern struct {
     f_read_fn: ?*const fn (p_stream: *gio.InputStream, p_buffer: ?*anyopaque, p_count: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) callconv(.c) isize,
     f_skip: ?*const fn (p_stream: *gio.InputStream, p_count: usize, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) callconv(.c) isize,
     f_close_fn: ?*const fn (p_stream: *gio.InputStream, p_cancellable: ?*gio.Cancellable, p_error: ?*?*glib.Error) callconv(.c) c_int,
-    f_read_async: ?*const fn (p_stream: *gio.InputStream, p_buffer: ?*[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) callconv(.c) void,
+    f_read_async: ?*const fn (p_stream: *gio.InputStream, p_buffer: ?[*]u8, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) callconv(.c) void,
     f_read_finish: ?*const fn (p_stream: *gio.InputStream, p_result: *gio.AsyncResult, p_error: ?*?*glib.Error) callconv(.c) isize,
     f_skip_async: ?*const fn (p_stream: *gio.InputStream, p_count: usize, p_io_priority: c_int, p_cancellable: ?*gio.Cancellable, p_callback: ?gio.AsyncReadyCallback, p_user_data: ?*anyopaque) callconv(.c) void,
     f_skip_finish: ?*const fn (p_stream: *gio.InputStream, p_result: *gio.AsyncResult, p_error: ?*?*glib.Error) callconv(.c) isize,
@@ -40256,7 +40256,7 @@ pub const PollableInputStreamInterface = extern struct {
     f_create_source: ?*const fn (p_stream: *gio.PollableInputStream, p_cancellable: ?*gio.Cancellable) callconv(.c) *glib.Source,
     /// Does a non-blocking read or returns
     ///   `G_IO_ERROR_WOULD_BLOCK`
-    f_read_nonblocking: ?*const fn (p_stream: *gio.PollableInputStream, p_buffer: ?*[*]u8, p_count: usize, p_error: ?*?*glib.Error) callconv(.c) isize,
+    f_read_nonblocking: ?*const fn (p_stream: *gio.PollableInputStream, p_buffer: ?[*]u8, p_count: usize, p_error: ?*?*glib.Error) callconv(.c) isize,
 
     pub fn as(p_instance: *PollableInputStreamInterface, comptime P_T: type) *P_T {
         return gobject.ext.as(P_T, p_instance);

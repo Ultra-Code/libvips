@@ -1334,8 +1334,8 @@ pub const Image = extern struct {
     extern fn vips_image_new_matrixv(p_width: c_int, p_height: c_int, ...) *vips.Image;
     pub const newMatrixv = vips_image_new_matrixv;
 
-    /// `Image.newMemory` creates a new `Image` which, when written to, will
-    /// create a memory image.
+    /// `Image.newMemory` creates a new `Image` which, when written to,
+    /// will create a memory image.
     ///
     /// ::: seealso
     ///     `Image.new`.
@@ -1464,6 +1464,18 @@ pub const Image = extern struct {
     extern fn vips_LabS2LabQ(p_in: *Image, p_out: **vips.Image, ...) c_int;
     pub const LabS2LabQ = vips_LabS2LabQ;
 
+    /// Turn Oklab to Oklch.
+    extern fn vips_Oklab2Oklch(p_in: *Image, p_out: **vips.Image, ...) c_int;
+    pub const Oklab2Oklch = vips_Oklab2Oklch;
+
+    /// Transform Oklab to XYZ using D65 illuminant.
+    extern fn vips_Oklab2XYZ(p_in: *Image, p_out: **vips.Image, ...) c_int;
+    pub const Oklab2XYZ = vips_Oklab2XYZ;
+
+    /// Turn Oklch to Oklab.
+    extern fn vips_Oklch2Oklab(p_in: *Image, p_out: **vips.Image, ...) c_int;
+    pub const Oklch2Oklab = vips_Oklch2Oklab;
+
     /// Turn XYZ to CMYK.
     ///
     /// Conversion is from D65 XYZ with relative intent. If you need more control
@@ -1478,6 +1490,10 @@ pub const Image = extern struct {
     ///     * `temp`: `ArrayDouble`, colour temperature
     extern fn vips_XYZ2Lab(p_in: *Image, p_out: **vips.Image, ...) c_int;
     pub const XYZ2Lab = vips_XYZ2Lab;
+
+    /// Transform XYZ to Oklab assuming D65 illuminant.
+    extern fn vips_XYZ2Oklab(p_in: *Image, p_out: **vips.Image, ...) c_int;
+    pub const XYZ2Oklab = vips_XYZ2Oklab;
 
     /// Turn XYZ to Yxy.
     extern fn vips_XYZ2Yxy(p_in: *Image, p_out: **vips.Image, ...) c_int;
@@ -3208,6 +3224,14 @@ pub const Image = extern struct {
     extern fn vips_image_get_format(p_image: *const Image) vips.BandFormat;
     pub const getFormat = vips_image_get_format;
 
+    /// If the image has an attached `"gainmap"`, return that. If there's a
+    /// compressed `"gainmap-data"`, decompress, and return it.
+    ///
+    /// You need to free the result with `gobject.Object.unref` when
+    /// you're done with it.
+    extern fn vips_image_get_gainmap(p_image: *Image) ?*vips.Image;
+    pub const getGainmap = vips_image_get_gainmap;
+
     extern fn vips_image_get_height(p_image: *const Image) c_int;
     pub const getHeight = vips_image_get_height;
 
@@ -3303,6 +3327,11 @@ pub const Image = extern struct {
     extern fn vips_image_get_string(p_image: *const Image, p_name: [*:0]const u8, p_out: *[*:0]const u8) c_int;
     pub const getString = vips_image_get_string;
 
+    /// Fetch and sanity-check `META_TILE_HEIGHT`. Default to -1 (no tiling)
+    /// if not present or crazy.
+    extern fn vips_image_get_tile_height(p_image: *Image) c_int;
+    pub const getTileHeight = vips_image_get_tile_height;
+
     /// Pick a tile size and a buffer height for this image and the current
     /// value of `concurrencyGet`. The buffer height
     /// will always be a multiple of tile_height.
@@ -3312,6 +3341,11 @@ pub const Image = extern struct {
     /// buffer size, plus whatever margin we add for things like convolution.
     extern fn vips_get_tile_size(p_im: *Image, p_tile_width: *c_int, p_tile_height: *c_int, p_n_lines: *c_int) void;
     pub const getTileSize = vips_get_tile_size;
+
+    /// Fetch and sanity-check `META_TILE_WIDTH`. Default to -1 (no tiling)
+    /// if not present or crazy.
+    extern fn vips_image_get_tile_width(p_image: *Image) c_int;
+    pub const getTileWidth = vips_image_get_tile_width;
 
     /// Read the `gobject.Type` for a header field. Returns zero if there
     /// is no field of that name.
@@ -3339,14 +3373,17 @@ pub const Image = extern struct {
     /// Reads a single pixel on an image.
     ///
     /// The pixel values are returned in `vector`, the length of the
-    /// array in `n`. You must free the array with `glib.free` when you are done with
-    /// it.
+    /// array in `n`. You must free the array with `glib.free` when you are
+    /// done with it.
     ///
     /// The result array has an element for each band. If `unpack_complex` is set,
     /// pixels in complex images are returned as double-length arrays.
     ///
+    /// This operation is slow. If you want to read many points, use
+    /// `Image.writeToMemory`.
+    ///
     /// ::: seealso
-    ///     `Image.drawPoint`.
+    ///     `Image.drawPoint`, `Image.writeToMemory`.
     extern fn vips_getpoint(p_in: *Image, p_vector: *[*]f64, p_n: *c_int, p_x: c_int, p_y: c_int, ...) c_int;
     pub const getpoint = vips_getpoint;
 
@@ -3534,8 +3571,8 @@ pub const Image = extern struct {
     ///
     /// Set `lossless` `TRUE` to switch to lossless compression.
     ///
-    /// Use `compression` to set the compression format e.g. HEVC, AVC, AV1 to use. It defaults to AV1
-    /// if the target filename ends with ".avif", otherwise HEVC.
+    /// Use `compression` to set the compression format e.g. HEVC, AVC, AV1 to use.
+    /// It defaults to AV1 if the target filename ends with ".avif", otherwise HEVC.
     ///
     /// Use `effort` to control the CPU effort spent improving compression.
     /// This is currently only applicable to AV1 encoders. Defaults to 4, 0 is
@@ -3549,6 +3586,9 @@ pub const Image = extern struct {
     ///
     /// Use `encoder` to set the encode library to use, e.g. aom, SVT-AV1, rav1e etc.
     ///
+    /// Use `tune` to pass a set of tuning parameters to the encoder, see the
+    /// libheif documentation.
+    ///
     /// ::: tip "Optional arguments"
     ///     * `Q`: `gint`, quality factor
     ///     * `bitdepth`: `gint`, set write bit depth to 8, 10, or 12 bits
@@ -3556,8 +3596,9 @@ pub const Image = extern struct {
     ///     * `compression`: `ForeignHeifCompression`, write with this
     ///       compression
     ///     * `effort`: `gint`, encoding effort
-    ///     * `subsample_mode`: `Foreign`Subsample, chroma subsampling mode
-    ///     * `encoder`: `Foreign`HeifEncoder, select encoder to use
+    ///     * `subsample_mode`: `ForeignSubsample`, chroma subsampling mode
+    ///     * `encoder`: `ForeignHeifEncoder`, select encoder to use
+    ///     * `tune`: `gchararray`, encoder tuning parameters
     ///
     /// ::: seealso
     ///     `Image.writeToFile`, `Image.heifload`.
@@ -3577,8 +3618,9 @@ pub const Image = extern struct {
     ///     * `compression`: `ForeignHeifCompression`, write with this
     ///       compression
     ///     * `effort`: `gint`, encoding effort
-    ///     * `subsample_mode`: `Foreign`Subsample, chroma subsampling mode
-    ///     * `encoder`: `Foreign`HeifEncoder, select encoder to use
+    ///     * `subsample_mode`: `ForeignSubsample`, chroma subsampling mode
+    ///     * `encoder`: `ForeignHeifEncoder`, select encoder to use
+    ///     * `tune`: `gchararray`, encoder tuning parameters
     ///
     /// ::: seealso
     ///     `Image.heifsave`, `Image.writeToFile`.
@@ -3594,8 +3636,9 @@ pub const Image = extern struct {
     ///     * `compression`: `ForeignHeifCompression`, write with this
     ///       compression
     ///     * `effort`: `gint`, encoding effort
-    ///     * `subsample_mode`: `Foreign`Subsample, chroma subsampling mode
-    ///     * `encoder`: `Foreign`HeifEncoder, select encoder to use
+    ///     * `subsample_mode`: `ForeignSubsample`, chroma subsampling mode
+    ///     * `encoder`: `ForeignHeifEncoder`, select encoder to use
+    ///     * `tune`: `gchararray`, encoder tuning parameters
     ///
     /// ::: seealso
     ///     `Image.heifsave`, `Image.writeToTarget`.
@@ -4097,8 +4140,9 @@ pub const Image = extern struct {
     extern fn vips_image_isfile(p_image: *Image) c_int;
     pub const isfile = vips_image_isfile;
 
-    /// If `image` has been killed (see `Image.setKill`), set an error message,
-    /// clear the `Image`.kill flag and return `TRUE`. Otherwise return `FALSE`.
+    /// If `image` has been killed (see `Image.setKill`), set an error
+    /// message, clear the `Image`.kill flag and return `TRUE`. Otherwise
+    /// return `FALSE`.
     ///
     /// Handy for loops which need to run sets of threads which can fail.
     ///
@@ -4359,10 +4403,9 @@ pub const Image = extern struct {
     extern fn vips_jpegsave_target(p_in: *Image, p_target: *vips.Target, ...) c_int;
     pub const jpegsaveTarget = vips_jpegsave_target;
 
-    /// Write a VIPS image to a file in JPEG-XL format.
-    ///
-    /// The JPEG-XL loader and saver are experimental features and may change
-    /// in future libvips versions.
+    /// Write a VIPS image to a file in JPEG-XL format. The image can be unsigned
+    /// 8 or 16-bit integer, or float. Use `bitdepth` for fine control of the image
+    /// bitdepth.
     ///
     /// `tier` sets the overall decode speed the encoder will target. Minimum is 0
     /// (highest quality), and maximum is 4 (lowest quality). Default is 0.
@@ -4374,6 +4417,10 @@ pub const Image = extern struct {
     /// As a convenience, you can also use `Q` to set `distance`. `Q` uses
     /// approximately the same scale as regular JPEG.
     ///
+    /// `bitdepth` sets the bitdepth to save at. It defaults to the full range of
+    /// the image numeric type, but can be set lower. It has no effect on float
+    /// images.
+    ///
     /// Set `lossless` to enable lossless compression.
     ///
     /// ::: tip "Optional arguments"
@@ -4382,6 +4429,7 @@ pub const Image = extern struct {
     ///     * `effort`: `gint`, encoding effort
     ///     * `lossless`: `gboolean`, enables lossless compression
     ///     * `Q`: `gint`, quality setting
+    ///     * `bitdepth`: `gint`, image bitdepth
     extern fn vips_jxlsave(p_in: *Image, p_filename: [*:0]const u8, ...) c_int;
     pub const jxlsave = vips_jxlsave;
 
@@ -6419,11 +6467,11 @@ pub const Image = extern struct {
     /// uchar image and has 255 for pixels which are currently in cache and 0
     /// for uncalculated pixels.
     ///
-    /// Renders with a positive priority are assumed to be large, gh-priority,
+    /// Renders with a positive priority are assumed to be large, high-priority,
     /// foreground images. Although there can be many of these, only one is ever
     /// active, to avoid overcommitting threads.
     ///
-    /// Renders with a negative priority are assumed to be small, thumbnail images
+    /// Renders with a negative priority are assumed to be small, thumbnail images,
     /// consisting of a single tile. Single tile images are effectively
     /// single-threaded, so all these renders are evaluated together.
     ///
@@ -6691,16 +6739,15 @@ pub const Image = extern struct {
 
     /// Write a VIPS image to a file as TIFF.
     ///
-    /// If `in` has the `META_PAGE_HEIGHT` metadata item, this is assumed to be a
-    /// "toilet roll" image. It will be
-    /// written as series of pages, each `META_PAGE_HEIGHT` pixels high.
+    /// If `in` has the `META_PAGE_HEIGHT` metadata item, this is assumed to
+    /// be a "toilet roll" image. It will be written as series of pages, each
+    /// `META_PAGE_HEIGHT` pixels high.
     ///
     /// Use `compression` to set the tiff compression. Currently jpeg, packbits,
     /// fax4, lzw, none, deflate, webp and zstd are supported. The default is no
-    /// compression.
-    /// JPEG compression is a good lossy compressor for photographs, packbits is
-    /// good for 1-bit images, and deflate is the best lossless compression TIFF
-    /// can do.
+    /// compression. JPEG compression is a good lossy compressor for photographs,
+    /// packbits is good for 1-bit images, and deflate is the best lossless
+    /// compression TIFF can do.
     ///
     /// XYZ images are automatically saved as libtiff LOGLUV with SGILOG compression.
     /// Float LAB images are saved as float CIELAB. Set `bitdepth` to save as 8-bit
@@ -6708,8 +6755,9 @@ pub const Image = extern struct {
     ///
     /// Use `Q` to set the JPEG compression factor. Default 75.
     ///
-    /// User `level` to set the ZSTD (1-22) or Deflate (1-9) compression level. Use `lossless` to
-    /// set WEBP lossless mode on. Use `Q` to set the WEBP compression level.
+    /// User `level` to set the ZSTD (1-22) or Deflate (1-9) compression level.
+    /// Use `lossless` to set WEBP lossless mode on. Use `Q` to set the WEBP
+    /// compression level.
     ///
     /// Use `predictor` to set the predictor for lzw, deflate and zstd compression.
     /// It defaults to `vips.@"ForeignTiffPredictor.HORIZONTAL"`, meaning horizontal
@@ -6730,11 +6778,13 @@ pub const Image = extern struct {
     /// a single layer.
     ///
     /// Set `bitdepth` to save 8-bit uchar images as 1, 2 or 4-bit TIFFs.
+    ///
     /// In case of depth 1: Values >128 are written as white, values <=128 as black.
     /// Normally vips will write MINISBLACK TIFFs where black is a 0 bit, but if you
     /// set `miniswhite`, it will use 0 for a white bit. Many pre-press applications
     /// only work with images which use this sense. `miniswhite` only affects one-bit
     /// images, it does nothing for greyscale images.
+    ///
     /// In case of depth 2: The same holds but values < 64 are written as black.
     /// For 64 <= values < 128 they are written as dark grey, for 128 <= values < 192
     /// they are written as light gray and values above are written as white.
@@ -6742,11 +6792,9 @@ pub const Image = extern struct {
     /// In case of depth 4: values < 16 are written as black, and so on for the
     /// lighter shades. In case `miniswhite` is set to true this behavior is inverted.
     ///
-    /// Use `resunit` to override the default resolution unit.
-    /// The default
-    /// resolution unit is taken from the header field
-    /// `META_RESOLUTION_UNIT`. If this field is not set, then
-    /// VIPS defaults to cm.
+    /// Use `resunit` to override the default resolution unit. The default
+    /// resolution unit is taken from the header field `META_RESOLUTION_UNIT`.
+    /// If this field is not set, then VIPS defaults to cm.
     ///
     /// Use `xres` and `yres` to override the default horizontal and vertical
     /// resolutions. By default these values are taken from the VIPS image header.
@@ -6759,12 +6807,11 @@ pub const Image = extern struct {
     /// xml. If `properties` is not set, the value of `META_IMAGEDESCRIPTION` is
     /// used instead.
     ///
-    /// The value of `META_XMP_NAME` is written to
-    /// the XMP tag. `META_ORIENTATION` (if set) is used to set the value of
-    /// the orientation
-    /// tag. `META_IPTC_NAME` (if set) is used to set the value of the IPTC tag.
-    /// `META_PHOTOSHOP_NAME` (if set) is used to set the value of the PHOTOSHOP
-    /// tag.
+    /// The value of `META_XMP_NAME` is written to the XMP tag.
+    /// `META_ORIENTATION` (if set) is used to set the value of the
+    /// orientation tag. `META_IPTC_NAME` (if set) is used to set the
+    /// value of the IPTC tag. `META_PHOTOSHOP_NAME` (if set) is used to
+    /// set the value of the PHOTOSHOP tag.
     ///
     /// By default, pyramid layers are saved as consecutive pages.
     /// Set `subifd` to save pyramid layers as sub-directories of the main image.
@@ -6924,6 +6971,41 @@ pub const Image = extern struct {
     extern fn vips_transpose3d(p_in: *Image, p_out: **vips.Image, ...) c_int;
     pub const transpose3d = vips_transpose3d;
 
+    /// Transform a uhdr image (three band sRGB with an attached gainmap) to
+    /// scRGB.
+    extern fn vips_uhdr2scRGB(p_in: *Image, p_out: **vips.Image, ...) c_int;
+    pub const uhdr2scRGB = vips_uhdr2scRGB;
+
+    /// Save an image as UltraHDR.
+    ///
+    /// If an image is sRGB and has a gainmap, it will be saved as UltraHDR with no
+    /// gainmap recomputation.
+    ///
+    /// If the image is scRGB and has a gainmap, a base image will be computed
+    /// and it will be saved as UltraHDR.
+    ///
+    /// If the image is scRGB and has no gainmap, one will be computed.
+    /// This is slow and takes a lot of memory.
+    ///
+    /// ::: seealso
+    ///     `Image.writeToFile`, `Image.uhdrload`.
+    extern fn vips_uhdrsave(p_in: *Image, p_filename: [*:0]const u8, ...) c_int;
+    pub const uhdrsave = vips_uhdrsave;
+
+    /// As `Image.uhdrsave`, but save to a memory buffer.
+    ///
+    /// ::: seealso
+    ///     `Image.uhdrsave`, `Image.writeToFile`.
+    extern fn vips_uhdrsave_buffer(p_in: *Image, p_buf: [*]*u8, p_len: *usize, ...) c_int;
+    pub const uhdrsaveBuffer = vips_uhdrsave_buffer;
+
+    /// As `Image.uhdrsave`, but save to a target.
+    ///
+    /// ::: seealso
+    ///     `Image.uhdrsave`, `Image.writeToTarget`.
+    extern fn vips_uhdrsave_target(p_in: *Image, p_target: *vips.Target, ...) c_int;
+    pub const uhdrsaveTarget = vips_uhdrsave_target;
+
     /// Unpremultiplies any alpha channel.
     ///
     /// Band `alpha_band` (by default the final band) contains the alpha and all
@@ -7004,6 +7086,10 @@ pub const Image = extern struct {
     /// with `Q` 80, 60, 40 or 20 to apply increasing amounts of preprocessing
     /// which improves the near-lossless compression ratio by up to 50%.
     ///
+    /// Set `exact` to preserve the color data in transparent pixels. This can
+    /// reduce compression efficiency, but is generally required when working with
+    /// images as data.
+    ///
     /// For animated webp output, `min_size` will try to optimize for minimum size.
     ///
     /// For animated webp output, `kmax` sets the maximum number of frames between
@@ -7020,6 +7106,7 @@ pub const Image = extern struct {
     /// ::: tip "Optional arguments"
     ///     * `Q`: `gint`, quality factor
     ///     * `lossless`: `gboolean`, enables lossless compression
+    ///     * `exact`: `gboolean`, preserves color values from transparent pixels
     ///     * `preset`: `ForeignWebpPreset`, choose lossy compression preset
     ///     * `smart_subsample`: `gboolean`, enables high quality chroma subsampling
     ///     * `smart_deblock`: `gboolean`, enables auto-adjusting of the deblocking
@@ -7050,6 +7137,7 @@ pub const Image = extern struct {
     ///     * `Q`: `gint`, quality factor
     ///     * `lossless`: `gboolean`, enables lossless compression
     ///     * `preset`: `ForeignWebpPreset`, choose lossy compression preset
+    ///     * `exact`: `gboolean`, preserves color values from transparent pixels
     ///     * `smart_subsample`: `gboolean`, enables high quality chroma subsampling
     ///     * `smart_deblock`: `gboolean`, enables auto-adjusting of the deblocking
     ///       filter
@@ -7074,6 +7162,7 @@ pub const Image = extern struct {
     /// ::: tip "Optional arguments"
     ///     * `Q`: `gint`, quality factor
     ///     * `lossless`: `gboolean`, enables lossless compression
+    ///     * `exact`: `gboolean`, preserves color values from transparent pixels
     ///     * `preset`: `ForeignWebpPreset`, choose lossy compression preset
     ///     * `smart_subsample`: `gboolean`, enables high quality chroma subsampling
     ///     * `smart_deblock`: `gboolean`, enables auto-adjusting of the deblocking
@@ -8279,9 +8368,7 @@ pub const Region = extern struct {
     pub const shrink = vips_region_shrink;
 
     /// Write the pixels `target` in `to` from the x2 larger area in `from`.
-    /// Non-complex uncoded images and LABQ only. Images with alpha (see
-    /// `Image.hasalpha`) shrink with pixels scaled by alpha to avoid
-    /// fringing.
+    /// Non-complex uncoded images and LABQ only.
     ///
     /// `method` selects the method used to do the 2x2 shrink.
     ///
@@ -9270,8 +9357,9 @@ pub const Area = extern struct {
     extern fn vips_area_new_array(p_type: usize, p_sizeof_type: usize, p_n: c_int) *vips.Area;
     pub const newArray = vips_area_new_array;
 
-    /// An area which holds an array of `gobject.Object` s. See `Area.newArray`. When
-    /// the area is freed, each `gobject.Object` will be unreffed.
+    /// An area which holds an array of `gobject.Object` s. See
+    /// `Area.newArray`. When the area is freed, each `gobject.Object`
+    /// will be unreffed.
     ///
     /// Add an extra `NULL` element at the end, handy for eg.
     /// `Image.pipelineArray` etc.
@@ -10178,7 +10266,7 @@ pub const Semaphore = extern struct {
     f_name: ?[*:0]u8,
     f_v: c_int,
     f_mutex: glib.Mutex,
-    f_cond: ?*glib.Cond,
+    f_cond: glib.Cond,
 
     extern fn vips_semaphore_destroy(p_s: *Semaphore) void;
     pub const destroy = vips_semaphore_destroy;
@@ -10322,7 +10410,6 @@ pub const Access = enum(c_int) {
     random = 0,
     sequential = 1,
     sequential_unbuffered = 2,
-    last = 3,
     _,
 
     extern fn vips_access_get_type() usize;
@@ -10345,7 +10432,6 @@ pub const Align = enum(c_int) {
     low = 0,
     centre = 1,
     high = 2,
-    last = 3,
     _,
 
     extern fn vips_align_get_type() usize;
@@ -10368,7 +10454,6 @@ pub const Angle = enum(c_int) {
     d90 = 1,
     d180 = 2,
     d270 = 3,
-    last = 4,
     _,
 
     extern fn vips_angle_get_type() usize;
@@ -10395,7 +10480,6 @@ pub const Angle45 = enum(c_int) {
     d225 = 5,
     d270 = 6,
     d315 = 7,
-    last = 8,
     _,
 
     extern fn vips_angle45_get_type() usize;
@@ -10423,7 +10507,6 @@ pub const BandFormat = enum(c_int) {
     complex = 7,
     double = 8,
     dpcomplex = 9,
-    last = 10,
     _,
 
     /// Return `TRUE` if `format` is uchar or schar.
@@ -10488,7 +10571,6 @@ pub const BlendMode = enum(c_int) {
     soft_light = 22,
     difference = 23,
     exclusion = 24,
-    last = 25,
     _,
 
     extern fn vips_blend_mode_get_type() usize;
@@ -10513,7 +10595,6 @@ pub const Coding = enum(c_int) {
     none = 0,
     labq = 2,
     rad = 6,
-    last = 7,
     _,
 
     extern fn vips_coding_get_type() usize;
@@ -10530,7 +10611,6 @@ pub const Combine = enum(c_int) {
     max = 0,
     sum = 1,
     min = 2,
-    last = 3,
     _,
 
     extern fn vips_combine_get_type() usize;
@@ -10552,7 +10632,6 @@ pub const Combine = enum(c_int) {
 pub const CombineMode = enum(c_int) {
     set = 0,
     add = 1,
-    last = 2,
     _,
 
     extern fn vips_combine_mode_get_type() usize;
@@ -10575,7 +10654,6 @@ pub const CompassDirection = enum(c_int) {
     south_east = 6,
     south_west = 7,
     north_west = 8,
-    last = 9,
     _,
 
     extern fn vips_compass_direction_get_type() usize;
@@ -10643,7 +10721,6 @@ pub const DemandStyle = enum(c_int) {
 pub const Direction = enum(c_int) {
     horizontal = 0,
     vertical = 1,
-    last = 2,
     _,
 
     extern fn vips_direction_get_type() usize;
@@ -10686,7 +10763,6 @@ pub const Extend = enum(c_int) {
     mirror = 3,
     white = 4,
     background = 5,
-    last = 6,
     _,
 
     extern fn vips_extend_get_type() usize;
@@ -10708,7 +10784,6 @@ pub const FailOn = enum(c_int) {
     truncated = 1,
     @"error" = 2,
     warning = 3,
-    last = 4,
     _,
 
     extern fn vips_fail_on_get_type() usize;
@@ -10720,12 +10795,11 @@ pub const FailOn = enum(c_int) {
     }
 };
 
-/// How many pyramid layers to create.
+/// What container format to use.
 pub const ForeignDzContainer = enum(c_int) {
     fs = 0,
     zip = 1,
     szi = 2,
-    last = 3,
     _,
 
     extern fn vips_foreign_dz_container_get_type() usize;
@@ -10742,7 +10816,6 @@ pub const ForeignDzDepth = enum(c_int) {
     onepixel = 0,
     onetile = 1,
     one = 2,
-    last = 3,
     _,
 
     extern fn vips_foreign_dz_depth_get_type() usize;
@@ -10761,7 +10834,6 @@ pub const ForeignDzLayout = enum(c_int) {
     google = 2,
     iiif = 3,
     iiif3 = 4,
-    last = 5,
     _,
 
     extern fn vips_foreign_dz_layout_get_type() usize;
@@ -10781,7 +10853,6 @@ pub const ForeignHeifCompression = enum(c_int) {
     avc = 2,
     jpeg = 3,
     av1 = 4,
-    last = 5,
     _,
 
     extern fn vips_foreign_heif_compression_get_type() usize;
@@ -10802,7 +10873,6 @@ pub const ForeignHeifEncoder = enum(c_int) {
     rav1e = 2,
     svt = 3,
     x265 = 4,
-    last = 5,
     _,
 
     extern fn vips_foreign_heif_encoder_get_type() usize;
@@ -10818,11 +10888,32 @@ pub const ForeignJpegSubsample = enum(c_int) {
     auto = 0,
     on = 1,
     off = 2,
-    last = 3,
     _,
 
     extern fn vips_foreign_jpeg_subsample_get_type() usize;
     pub const getGObjectType = vips_foreign_jpeg_subsample_get_type;
+
+    test {
+        @setEvalBranchQuota(100_000);
+        std.testing.refAllDecls(@This());
+    }
+};
+
+/// Each page of a PDF document can contain multiple page boxes,
+/// also known as boundary boxes or print marks.
+///
+/// Each page box defines a region of the complete page that
+/// should be rendered. The default region is the crop box.
+pub const ForeignPdfPageBox = enum(c_int) {
+    media = 0,
+    crop = 1,
+    trim = 2,
+    bleed = 3,
+    art = 4,
+    _,
+
+    extern fn vips_foreign_pdf_page_box_get_type() usize;
+    pub const getGObjectType = vips_foreign_pdf_page_box_get_type;
 
     test {
         @setEvalBranchQuota(100_000);
@@ -10848,7 +10939,6 @@ pub const ForeignPpmFormat = enum(c_int) {
     ppm = 2,
     pfm = 3,
     pnm = 4,
-    last = 5,
     _,
 
     extern fn vips_foreign_ppm_format_get_type() usize;
@@ -10865,7 +10955,6 @@ pub const ForeignSubsample = enum(c_int) {
     auto = 0,
     on = 1,
     off = 2,
-    last = 3,
     _,
 
     extern fn vips_foreign_subsample_get_type() usize;
@@ -10896,7 +10985,6 @@ pub const ForeignTiffCompression = enum(c_int) {
     webp = 6,
     zstd = 7,
     jp2k = 8,
-    last = 9,
     _,
 
     extern fn vips_foreign_tiff_compression_get_type() usize;
@@ -10914,7 +11002,6 @@ pub const ForeignTiffPredictor = enum(c_int) {
     none = 1,
     horizontal = 2,
     float = 3,
-    last = 4,
     _,
 
     extern fn vips_foreign_tiff_predictor_get_type() usize;
@@ -10930,7 +11017,6 @@ pub const ForeignTiffPredictor = enum(c_int) {
 pub const ForeignTiffResunit = enum(c_int) {
     cm = 0,
     inch = 1,
-    last = 2,
     _,
 
     extern fn vips_foreign_tiff_resunit_get_type() usize;
@@ -10950,7 +11036,6 @@ pub const ForeignWebpPreset = enum(c_int) {
     drawing = 3,
     icon = 4,
     text = 5,
-    last = 6,
     _,
 
     extern fn vips_foreign_webp_preset_get_type() usize;
@@ -10992,7 +11077,6 @@ pub const Intent = enum(c_int) {
     saturation = 2,
     absolute = 3,
     auto = 32,
-    last = 33,
     _,
 
     extern fn vips_intent_get_type() usize;
@@ -11022,7 +11106,6 @@ pub const Interesting = enum(c_int) {
     low = 4,
     high = 5,
     all = 6,
-    last = 7,
     _,
 
     extern fn vips_interesting_get_type() usize;
@@ -11064,8 +11147,14 @@ pub const Interpretation = enum(c_int) {
     matrix = 27,
     scrgb = 28,
     hsv = 29,
-    last = 30,
+    oklab = 30,
+    oklch = 31,
     _,
+
+    /// The number of "real" bands we expect for this interpretation. If we've no
+    /// idea (eg. MULTIBAND), return 0.
+    extern fn vips_interpretation_bands(p_interpretation: vips.Interpretation) c_int;
+    pub const bands = vips_interpretation_bands;
 
     extern fn vips_interpretation_max_alpha(p_interpretation: vips.Interpretation) f64;
     pub const maxAlpha = vips_interpretation_max_alpha;
@@ -11089,7 +11178,6 @@ pub const Kernel = enum(c_int) {
     lanczos3 = 5,
     mks2013 = 6,
     mks2021 = 7,
-    last = 8,
     _,
 
     extern fn vips_kernel_get_type() usize;
@@ -11108,7 +11196,6 @@ pub const OperationBoolean = enum(c_int) {
     eor = 2,
     lshift = 3,
     rshift = 4,
-    last = 5,
     _,
 
     extern fn vips_operation_boolean_get_type() usize;
@@ -11125,7 +11212,6 @@ pub const OperationComplex = enum(c_int) {
     polar = 0,
     rect = 1,
     conj = 2,
-    last = 3,
     _,
 
     extern fn vips_operation_complex_get_type() usize;
@@ -11140,7 +11226,6 @@ pub const OperationComplex = enum(c_int) {
 /// See also: `Image.complex2`.
 pub const OperationComplex2 = enum(c_int) {
     cross_phase = 0,
-    last = 1,
     _,
 
     extern fn vips_operation_complex2_get_type() usize;
@@ -11156,7 +11241,6 @@ pub const OperationComplex2 = enum(c_int) {
 pub const OperationComplexget = enum(c_int) {
     real = 0,
     imag = 1,
-    last = 2,
     _,
 
     extern fn vips_operation_complexget_get_type() usize;
@@ -11186,7 +11270,6 @@ pub const OperationMath = enum(c_int) {
     asinh = 13,
     acosh = 14,
     atanh = 15,
-    last = 16,
     _,
 
     extern fn vips_operation_math_get_type() usize;
@@ -11203,7 +11286,6 @@ pub const OperationMath2 = enum(c_int) {
     pow = 0,
     wop = 1,
     atan2 = 2,
-    last = 3,
     _,
 
     extern fn vips_operation_math2_get_type() usize;
@@ -11222,7 +11304,6 @@ pub const OperationMath2 = enum(c_int) {
 pub const OperationMorphology = enum(c_int) {
     erode = 0,
     dilate = 1,
-    last = 2,
     _,
 
     extern fn vips_operation_morphology_get_type() usize;
@@ -11242,7 +11323,6 @@ pub const OperationRelational = enum(c_int) {
     lesseq = 3,
     more = 4,
     moreeq = 5,
-    last = 6,
     _,
 
     extern fn vips_operation_relational_get_type() usize;
@@ -11259,7 +11339,6 @@ pub const OperationRound = enum(c_int) {
     rint = 0,
     ceil = 1,
     floor = 2,
-    last = 3,
     _,
 
     extern fn vips_operation_round_get_type() usize;
@@ -11277,7 +11356,6 @@ pub const OperationRound = enum(c_int) {
 pub const PCS = enum(c_int) {
     lab = 0,
     xyz = 1,
-    last = 2,
     _,
 
     extern fn vips_pcs_get_type() usize;
@@ -11294,7 +11372,6 @@ pub const Precision = enum(c_int) {
     integer = 0,
     float = 1,
     approximate = 2,
-    last = 3,
     _,
 
     extern fn vips_precision_get_type() usize;
@@ -11307,6 +11384,12 @@ pub const Precision = enum(c_int) {
 };
 
 /// How to calculate the output pixels when shrinking a 2x2 region.
+///
+/// Images with alpha (see `Image.hasalpha`) always shrink with
+/// `vips.@"RegionShrink.MEAN"` and pixels scaled by alpha to avoid fringing.
+///
+/// Set the image interpretation to `vips.@"Interpretation.MULTIBAND"` to
+/// treat all bands equally.
 pub const RegionShrink = enum(c_int) {
     mean = 0,
     median = 1,
@@ -11314,7 +11397,6 @@ pub const RegionShrink = enum(c_int) {
     max = 3,
     min = 4,
     nearest = 5,
-    last = 6,
     _,
 
     extern fn vips_region_shrink_get_type() usize;
@@ -11335,7 +11417,6 @@ pub const SdfShape = enum(c_int) {
     box = 1,
     rounded_box = 2,
     line = 3,
-    last = 4,
     _,
 
     extern fn vips_sdf_shape_get_type() usize;
@@ -11357,7 +11438,6 @@ pub const Size = enum(c_int) {
     up = 1,
     down = 2,
     force = 3,
-    last = 4,
     _,
 
     extern fn vips_size_get_type() usize;
@@ -11379,7 +11459,6 @@ pub const TextWrap = enum(c_int) {
     char = 1,
     word_char = 2,
     none = 3,
-    last = 4,
     _,
 
     extern fn vips_text_wrap_get_type() usize;
@@ -11422,21 +11501,21 @@ pub const Token = enum(c_int) {
 /// Input gobjects are automatically reffed, output gobjects automatically ref
 /// us. We also automatically watch for "destroy" and unlink.
 ///
-/// `vips.@"ArgumentFlags.SET_ALWAYS"` is handy for arguments which are set from C. For
-/// example, `Image.properties.width` is a property that gives access to the Xsize
-/// member of struct _VipsImage. We default its 'assigned' to `TRUE`
-/// since the field is always set directly by C.
+/// `vips.@"ArgumentFlags.SET_ALWAYS"` is handy for arguments which are set
+/// from C. For example, `Image.properties.width` is a property that gives
+/// access to the Xsize member of struct _VipsImage. We default its
+/// 'assigned' to `TRUE` since the field is always set directly by C.
 ///
-/// `vips.@"ArgumentFlags.DEPRECATED"` arguments are not shown in help text, are not
-/// looked for if required, are not checked for "have-been-set". You can
+/// `vips.@"ArgumentFlags.DEPRECATED"` arguments are not shown in help text,
+/// are not looked for if required, are not checked for "have-been-set". You can
 /// deprecate a required argument, but you must obviously add a new required
 /// argument if you do.
 ///
-/// Input args with `vips.@"ArgumentFlags.MODIFY"` will be modified by the operation.
-/// This is used for things like the in-place drawing operations.
+/// Input args with `vips.@"ArgumentFlags.MODIFY"` will be modified by the
+/// operation. This is used for things like the in-place drawing operations.
 ///
-/// `vips.@"ArgumentFlags.NON_HASHABLE"` stops the argument being used in hash and
-/// equality tests. It's useful for arguments like `revalidate` which
+/// `vips.@"ArgumentFlags.NON_HASHABLE"` stops the argument being used in
+/// hash and equality tests. It's useful for arguments like `revalidate` which
 /// control the behaviour of the operator cache.
 pub const ArgumentFlags = packed struct(c_uint) {
     required: bool = false,
@@ -11544,19 +11623,19 @@ pub const ForeignCoding = packed struct(c_uint) {
 
 /// Some hints about the image loader.
 ///
-/// `vips.@"ForeignFlags.PARTIAL"` means that the image can be read directly from the
-/// file without needing to be unpacked to a temporary image first.
+/// `vips.@"ForeignFlags.PARTIAL"` means that the image can be read directly
+/// from the file without needing to be unpacked to a temporary image first.
 ///
-/// `vips.@"ForeignFlags.SEQUENTIAL"` means that the loader supports lazy reading, but
-/// only top-to-bottom (sequential) access. Formats like PNG can read sets of
-/// scanlines, for example, but only in order.
+/// `vips.@"ForeignFlags.SEQUENTIAL"` means that the loader supports lazy
+/// reading, but only top-to-bottom (sequential) access. Formats like PNG can
+/// read sets of scanlines, for example, but only in order.
 ///
 /// If neither PARTIAL or SEQUENTIAL is set, the loader only supports whole
 /// image read. Setting both PARTIAL and SEQUENTIAL is an error.
 ///
-/// `vips.@"ForeignFlags.BIGENDIAN"` means that image pixels are most-significant byte
-/// first. Depending on the native byte order of the host machine, you may
-/// need to swap bytes. See `Image.copy`.
+/// `vips.@"ForeignFlags.BIGENDIAN"` means that image pixels are
+/// most-significant byte first. Depending on the native byte order of the
+/// host machine, you may need to swap bytes. See `Image.copy`.
 pub const ForeignFlags = packed struct(c_uint) {
     partial: bool = false,
     bigendian: bool = false,
@@ -11612,7 +11691,7 @@ pub const ForeignKeep = packed struct(c_uint) {
     iptc: bool = false,
     icc: bool = false,
     other: bool = false,
-    _padding5: bool = false,
+    gainmap: bool = false,
     _padding6: bool = false,
     _padding7: bool = false,
     _padding8: bool = false,
@@ -11646,7 +11725,8 @@ pub const ForeignKeep = packed struct(c_uint) {
     pub const flags_iptc: ForeignKeep = @bitCast(@as(c_uint, 4));
     pub const flags_icc: ForeignKeep = @bitCast(@as(c_uint, 8));
     pub const flags_other: ForeignKeep = @bitCast(@as(c_uint, 16));
-    pub const flags_all: ForeignKeep = @bitCast(@as(c_uint, 31));
+    pub const flags_gainmap: ForeignKeep = @bitCast(@as(c_uint, 32));
+    pub const flags_all: ForeignKeep = @bitCast(@as(c_uint, 63));
     extern fn vips_foreign_keep_get_type() usize;
     pub const getGObjectType = vips_foreign_keep_get_type;
 
@@ -11776,23 +11856,24 @@ pub const ForeignSaveable = packed struct(c_uint) {
 /// not at the top of the image. In this case, the first part of the image will
 /// be read and discarded
 ///
-/// `vips.@"OperationFlags.NOCACHE"` means that the operation must not be cached by
-/// vips.
+/// `vips.@"OperationFlags.NOCACHE"` means that the operation must not be
+/// cached by vips.
 ///
-/// `vips.@"OperationFlags.DEPRECATED"` means this is an old operation kept in vips for
-/// compatibility only and should be hidden from users.
+/// `vips.@"OperationFlags.DEPRECATED"` means this is an old operation kept
+/// in vips for compatibility only and should be hidden from users.
 ///
-/// `vips.@"OperationFlags.UNTRUSTED"` means the operation depends on external libraries
-/// which have not been hardened against attack. It should probably not be used
-/// on untrusted input. Use `blockUntrustedSet` to block all
-/// untrusted operations.
+/// `vips.@"OperationFlags.UNTRUSTED"` means the operation depends on
+/// external libraries which have not been hardened against attack. It should
+/// probably not be used on untrusted input. Use `blockUntrustedSet`
+/// to block all untrusted operations.
 ///
-/// `vips.@"OperationFlags.BLOCKED"` means the operation is prevented from executing. Use
-/// `Operation.blockSet` to enable and disable groups of operations.
+/// `vips.@"OperationFlags.BLOCKED"` means the operation is prevented from
+/// executing. Use `Operation.blockSet` to enable and disable groups of
+/// operations.
 ///
-/// `vips.@"OperationFlags.REVALIDATE"` force the operation to run, updating the cache
-/// with the new value. This is used by eg. VipsForeignLoad to implement the
-/// "revalidate" argument.
+/// `vips.@"OperationFlags.REVALIDATE"` force the operation to run, updating
+/// the cache with the new value. This is used by eg. VipsForeignLoad to
+/// implement the "revalidate" argument.
 pub const OperationFlags = packed struct(c_uint) {
     sequential: bool = false,
     sequential_unbuffered: bool = false,
@@ -12683,6 +12764,41 @@ pub const csvload = vips_csvload;
 extern fn vips_csvload_source(p_source: *vips.Source, p_out: **vips.Image, ...) c_int;
 pub const csvloadSource = vips_csvload_source;
 
+/// Read a RAW camera file using LibRaw.
+///
+/// This loader supports the most RAW formats, including
+/// ARW, CR2, CR3, CRW, DNG, NEF, NRW, ORF, PEF, RAF, RAW, RW2, SRW, X3F, and
+/// many others.
+///
+/// The loader applies demosaicing and basic processing to produce an RGB or
+/// grayscale image suitable for further processing. It attaches XMP and ICC
+/// metadata, if present.
+///
+/// ::: tip "Optional arguments"
+///     * `bitdepth`: `gint`, load as 8 or 16 bit data
+extern fn vips_dcrawload(p_filename: [*:0]const u8, p_out: **vips.Image, ...) c_int;
+pub const dcrawload = vips_dcrawload;
+
+/// Exactly as `Image.dcrawload`, but read from a buffer.
+///
+/// ::: tip "Optional arguments"
+///     * `bitdepth`: `gint`, load as 8 or 16 bit data
+///
+/// ::: seealso
+///     `Image.dcrawload`.
+extern fn vips_dcrawload_buffer(p_buf: [*]u8, p_len: usize, p_out: **vips.Image, ...) c_int;
+pub const dcrawloadBuffer = vips_dcrawload_buffer;
+
+/// Exactly as `Image.dcrawload`, but read from a source.
+///
+/// ::: tip "Optional arguments"
+///     * `bitdepth`: `gint`, load as 8 or 16 bit data
+///
+/// ::: seealso
+///     `Image.dcrawload`.
+extern fn vips_dcrawload_source(p_source: *vips.Source, p_out: **vips.Image, ...) c_int;
+pub const dcrawloadSource = vips_dcrawload_source;
+
 extern fn vips_enum_from_nick(p_domain: [*:0]const u8, p_type: usize, p_str: [*:0]const u8) c_int;
 pub const enumFromNick = vips_enum_from_nick;
 
@@ -13413,6 +13529,19 @@ pub const magickload = vips_magickload;
 extern fn vips_magickload_buffer(p_buf: [*]u8, p_len: usize, p_out: **vips.Image, ...) c_int;
 pub const magickloadBuffer = vips_magickload_buffer;
 
+/// Exactly as `Image.magickload`, but read from a source.
+///
+/// ::: tip "Optional arguments"
+///     * `page`: `gint`, load from this page
+///     * `n`: `gint`, load this many pages
+///     * `density`: `gchararray`, canvas resolution for rendering vector formats
+///       like SVG
+///
+/// ::: seealso
+///     `Image.magickload`.
+extern fn vips_magickload_source(p_source: *vips.Source, p_out: **vips.Image, ...) c_int;
+pub const magickloadSource = vips_magickload_source;
+
 /// `glib.malloc` local to `object`, that is, the memory will be automatically
 /// freed for you when the object is closed. If `object` is `NULL`, you need to
 /// free the memory explicitly with `glib.free`.
@@ -13773,6 +13902,9 @@ pub const openslideloadSource = vips_openslideload_source;
 ///
 /// Use `password` to supply a decryption password.
 ///
+/// When using pdfium, the region of a page to render can be selected with
+/// `page_box`, defaulting to the crop box.
+///
 /// The operation fills a number of header fields with metadata, for example
 /// "pdf-author". They may be useful.
 ///
@@ -13785,6 +13917,7 @@ pub const openslideloadSource = vips_openslideload_source;
 ///     * `dpi`: `gdouble`, render at this DPI
 ///     * `scale`: `gdouble`, scale render by this factor
 ///     * `background`: `ArrayDouble`, background colour
+///     * `page_box`: `ForeignPdfPageBox`, use this page box (pdfium only)
 ///
 /// ::: seealso
 ///     `Image.newFromFile`, `Image.magickload`.
@@ -13803,6 +13936,7 @@ pub const pdfload = vips_pdfload;
 ///     * `dpi`: `gdouble`, render at this DPI
 ///     * `scale`: `gdouble`, scale render by this factor
 ///     * `background`: `ArrayDouble`, background colour
+///     * `page_box`: `ForeignPdfPageBox`, use this page box (pdfium only)
 ///
 /// ::: seealso
 ///     `Image.pdfload`.
@@ -13817,6 +13951,7 @@ pub const pdfloadBuffer = vips_pdfload_buffer;
 ///     * `dpi`: `gdouble`, render at this DPI
 ///     * `scale`: `gdouble`, scale render by this factor
 ///     * `background`: `ArrayDouble`, background colour
+///     * `page_box`: `ForeignPdfPageBox`, use this page box (pdfium only)
 ///
 /// ::: seealso
 ///     `Image.pdfload`
@@ -14313,7 +14448,8 @@ pub const @"switch" = vips_switch;
 /// You can put a number between the `%` and the `s` to change the order
 /// in which the substitution occurs.
 ///
-/// The command is executed with [``popen``](man:popen(3)) and the output captured in `log`.
+/// The command is executed with [``popen``](man:popen(3)) and the output
+/// captured in `log`.
 ///
 /// After the command finishes, if `out_format` is set, the output image is
 /// opened and returned in `out`. You can append `[options]` to `out_format` to
@@ -14322,6 +14458,9 @@ pub const @"switch" = vips_switch;
 /// Closing `out` image will automatically delete the output file.
 ///
 /// Finally the input images are deleted.
+///
+/// If `cache` is set, this call will be added to the libvips operation cache
+/// and reused if possible.
 ///
 /// For example, this call will run the ImageMagick convert program on an
 /// image, using JPEG files to pass images into and out of the convert command.
@@ -14336,6 +14475,7 @@ pub const @"switch" = vips_switch;
 ///         "out", &out,
 ///         "in_format", "`s`.jpg",
 ///         "out_format", "`s`.jpg",
+///         "cache", TRUE,
 ///         "log", &log,
 ///         NULL))
 ///     error ...
@@ -14346,6 +14486,7 @@ pub const @"switch" = vips_switch;
 ///     * `out`: `Image`, output, image
 ///     * `in_format`: `gchararray`, write input files like this
 ///     * `out_format`: `gchararray`, write output filename like this
+///     * `cache`: `gboolean`, cache this call
 ///     * `log`: `gchararray`, output, stdout of command is returned here
 extern fn vips_system(p_cmd_format: [*:0]const u8, ...) c_int;
 pub const system = vips_system;
@@ -14810,6 +14951,42 @@ pub const typeMap = vips_type_map;
 extern fn vips_type_map_all(p_base: usize, p_fn: vips.TypeMapFn, p_a: ?*anyopaque) ?*anyopaque;
 pub const typeMapAll = vips_type_map_all;
 
+/// Read an UltraHDR image.
+///
+/// The UltraHDR image is decoded as a tone-mapped SDR base image
+/// plus a gainmap attached as image metadata.
+///
+/// Either process the SDR image and update the gainmap if necessary, or use
+/// `Image.uhdr2scRGB` to convert the SDR + gainmap image to full scRGB
+/// HDR.
+///
+/// `Image.uhdrsave` can write both scRGB HDR and SDR plus gainmap
+/// images.
+///
+/// Set `shrink` to shrink the returned image by an integer factor during load.
+///
+/// ::: tip "Optional arguments"
+///     * `shrink`: `gint`, shrink by this factor on load
+///
+/// ::: seealso
+///     `Image.newFromFile`, `Image.uhdr2scRGB`.
+extern fn vips_uhdrload(p_filename: [*:0]const u8, p_out: **vips.Image, ...) c_int;
+pub const uhdrload = vips_uhdrload;
+
+/// Exactly as `Image.uhdrload`, but read from a buffer.
+///
+/// ::: tip "Optional arguments"
+///     * `shrink`: `gint`, shrink by this factor on load
+extern fn vips_uhdrload_buffer(p_buf: [*]u8, p_len: usize, p_out: **vips.Image, ...) c_int;
+pub const uhdrloadBuffer = vips_uhdrload_buffer;
+
+/// Exactly as `Image.uhdrload`, but read from a source.
+///
+/// ::: tip "Optional arguments"
+///     * `shrink`: `gint`, shrink by this factor on load
+extern fn vips_uhdrload_source(p_source: *vips.Source, p_out: **vips.Image, ...) c_int;
+pub const uhdrloadSource = vips_uhdrload_source;
+
 /// Get the pointer from an area. Don't touch count (area is static).
 extern fn vips_value_get_area(p_value: *const gobject.Value, p_length: ?*usize) ?*anyopaque;
 pub const valueGetArea = vips_value_get_area;
@@ -14909,7 +15086,8 @@ pub const valueSetArrayImage = vips_value_set_array_image;
 extern fn vips_value_set_array_int(p_value: *gobject.Value, p_array: ?[*]const c_int, p_n: c_int) void;
 pub const valueSetArrayInt = vips_value_set_array_int;
 
-/// Set `value` to hold an array of `gobject.Object`. Pass in the array length in `n`.
+/// Set `value` to hold an array of `gobject.Object`. Pass in the array
+/// length in `n`.
 ///
 /// ::: seealso
 ///     `valueGetArrayObject`.
@@ -15232,7 +15410,7 @@ pub const A_Z0 = 35.584900;
 pub const B_X0 = 99.072000;
 pub const B_Y0 = 100.000000;
 pub const B_Z0 = 85.223000;
-pub const CONFIG = "enable debug: false\nenable deprecated: true\nenable modules: true\nenable C++ binding: true\nenable RAD load/save: true\nenable Analyze7 load: true\nenable PPM load/save: true\nenable GIF load: true\nFFTs with fftw3: true\nSIMD support with libhwy: true\nICC profile support with lcms2: true\ndeflate compression with zlib: true\ntext rendering with pangocairo: true\nfont file support with fontconfig: true\nEXIF metadata support with libexif: true\nJPEG load/save with libjpeg: true\nJXL load/save with libjxl: true (dynamic module: true)\nJPEG2000 load/save with libopenjp2: true\nPNG load/save with libpng: true\nimage quantisation with imagequant: true\nTIFF load/save with libtiff-4: true\nimage pyramid save with libarchive: true\nHEIC/AVIF load/save with libheif: true (dynamic module: true)\nWebP load/save with libwebp: true\nPDF load with poppler-glib: true (dynamic module: true)\nSVG load with librsvg-2.0: true\nEXR load with OpenEXR: true\nWSI load with openslide: true (dynamic module: true)\nMatlab load with Matio: false\nNIfTI load/save with libnifti: false\nFITS load/save with cfitsio: true\nGIF save with cgif: true\nMagick load/save with MagickCore: true (dynamic module: true)";
+pub const CONFIG = "enable debug: false\nenable deprecated: true\nenable modules: true\nenable C++ binding: true\nenable RAD load/save: true\nenable Analyze7 load: true\nenable PPM load/save: true\nenable GIF load: true\nFFTs with fftw3: true\nSIMD support with libhwy: true\nICC profile support with lcms2: true\ndeflate compression with zlib: true\ntext rendering with pangocairo: true\nfont file support with fontconfig: true\nEXIF metadata support with libexif: true\nJPEG load/save with libjpeg: true\nUHDR load/save with libuhdr: false\nJXL load/save with libjxl: true (dynamic module: true)\nJPEG2000 load/save with libopenjp2: true\nPNG load/save with libpng: true\nimage quantisation with imagequant: true\nTIFF load/save with libtiff-4: true\nimage pyramid save with libarchive: true\nHEIC/AVIF load/save with libheif: true (dynamic module: true)\nWebP load/save with libwebp: true\nPDF load with poppler-glib: true (dynamic module: true)\nSVG load with librsvg-2.0: true\nEXR load with OpenEXR: true\nWSI load with openslide: true (dynamic module: true)\nMatlab load with Matio: false\nNIfTI load/save with libnifti: false\nFITS load/save with cfitsio: true\nGIF save with cgif: true\nRAW load with libraw: false\nMagick load/save with MagickCore: true (dynamic module: true)";
 /// Areas under curves for illuminant C (6774K), 2 degree observer.
 pub const C_X0 = 98.070000;
 pub const C_Y0 = 100.000000;
@@ -15272,9 +15450,9 @@ pub const INTERPOLATE_SCALE = 1;
 /// Many of the vips interpolators use fixed-point arithmetic for value
 /// calculation. This is how many bits of precision they use.
 pub const INTERPOLATE_SHIFT = 12;
-pub const LIBRARY_AGE = 19;
-pub const LIBRARY_CURRENT = 61;
-pub const LIBRARY_REVISION = 2;
+pub const LIBRARY_AGE = 20;
+pub const LIBRARY_CURRENT = 62;
+pub const LIBRARY_REVISION = 0;
 /// The first four bytes of a VIPS file in Intel byte ordering.
 pub const MAGIC_INTEL = 3064394248;
 /// The first four bytes of a VIPS file in SPARC byte ordering.
@@ -15338,10 +15516,14 @@ pub const META_RESOLUTION_UNIT = "resolution-unit";
 /// operations (eg. `Image.shrinkv`) add extra caches if they see it on their
 /// input.
 pub const META_SEQUENTIAL = "vips-sequential";
+/// If set, the height of the tiles for this image.
+pub const META_TILE_HEIGHT = "tile-height";
+/// If set, the width of the tiles for this image.
+pub const META_TILE_WIDTH = "tile-width";
 /// The name that read and write operations use for the image's XMP data.
 pub const META_XMP_NAME = "xmp-data";
-pub const MICRO_VERSION = 2;
-pub const MINOR_VERSION = 17;
+pub const MICRO_VERSION = 0;
+pub const MINOR_VERSION = 18;
 pub const PATH_MAX = 4096;
 pub const PI = 3.141593;
 pub const SBUF_BUFFER_SIZE = 4096;
@@ -15352,8 +15534,8 @@ pub const TRANSFORM_SCALE = 1;
 /// Many of the libvips interpolators use fixed-point arithmetic for coordinate
 /// calculation. This is how many bits of precision they use.
 pub const TRANSFORM_SHIFT = 6;
-pub const VERSION = "8.17.2";
-pub const VERSION_STRING = "8.17.2";
+pub const VERSION = "8.18.0";
+pub const VERSION_STRING = "8.18.0";
 
 test {
     @setEvalBranchQuota(100_000);

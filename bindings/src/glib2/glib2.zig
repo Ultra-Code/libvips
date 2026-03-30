@@ -4005,7 +4005,7 @@ pub const IOChannel = extern struct {
     pub const read = g_io_channel_read;
 
     /// Replacement for `glib.IOChannel.read` with the new API.
-    extern fn g_io_channel_read_chars(p_channel: *IOChannel, p_buf: *[*]u8, p_count: usize, p_bytes_read: ?*usize, p_error: ?*?*glib.Error) glib.IOStatus;
+    extern fn g_io_channel_read_chars(p_channel: *IOChannel, p_buf: [*]u8, p_count: usize, p_bytes_read: ?*usize, p_error: ?*?*glib.Error) glib.IOStatus;
     pub const readChars = g_io_channel_read_chars;
 
     /// Reads a line, including the terminating character(s),
@@ -4829,7 +4829,7 @@ pub const List = extern struct {
     /// number_list = g_list_append (number_list, GINT_TO_POINTER (27));
     /// number_list = g_list_append (number_list, GINT_TO_POINTER (14));
     /// ```
-    extern fn g_list_append(p_list: *glib.List, p_data: ?*anyopaque) *glib.List;
+    extern fn g_list_append(p_list: ?*glib.List, p_data: ?*anyopaque) *glib.List;
     pub const append = g_list_append;
 
     /// Adds the second `glib.List` onto the end of the first `glib.List`.
@@ -4954,11 +4954,11 @@ pub const List = extern struct {
     pub const index = g_list_index;
 
     /// Inserts a new element into the list at the given position.
-    extern fn g_list_insert(p_list: *glib.List, p_data: ?*anyopaque, p_position: c_int) *glib.List;
+    extern fn g_list_insert(p_list: ?*glib.List, p_data: ?*anyopaque, p_position: c_int) *glib.List;
     pub const insert = g_list_insert;
 
     /// Inserts a new element into the list before the given position.
-    extern fn g_list_insert_before(p_list: *glib.List, p_sibling: *glib.List, p_data: ?*anyopaque) *glib.List;
+    extern fn g_list_insert_before(p_list: ?*glib.List, p_sibling: *glib.List, p_data: ?*anyopaque) *glib.List;
     pub const insertBefore = g_list_insert_before;
 
     /// Inserts `link_` into the list before the given position.
@@ -5041,7 +5041,7 @@ pub const List = extern struct {
     ///
     /// Do not use this function to prepend a new element to a different
     /// element than the start of the list. Use `glib.List.insertBefore` instead.
-    extern fn g_list_prepend(p_list: *glib.List, p_data: ?*anyopaque) *glib.List;
+    extern fn g_list_prepend(p_list: ?*glib.List, p_data: ?*anyopaque) *glib.List;
     pub const prepend = g_list_prepend;
 
     extern fn g_list_push_allocator(p_allocator: *glib.Allocator) void;
@@ -5381,7 +5381,7 @@ pub const MainContext = opaque {
     ///
     /// You must have successfully acquired the context with
     /// `glib.MainContext.acquire` before you may call this function.
-    extern fn g_main_context_query(p_context: ?*MainContext, p_max_priority: c_int, p_timeout_: *c_int, p_fds: *[*]glib.PollFD, p_n_fds: c_int) c_int;
+    extern fn g_main_context_query(p_context: ?*MainContext, p_max_priority: c_int, p_timeout_: *c_int, p_fds: [*]glib.PollFD, p_n_fds: c_int) c_int;
     pub const query = g_main_context_query;
 
     /// Increases the reference count on a `glib.MainContext` object by one.
@@ -9028,7 +9028,7 @@ pub const SList = extern struct {
     /// number_list = g_slist_append (number_list, GINT_TO_POINTER (27));
     /// number_list = g_slist_append (number_list, GINT_TO_POINTER (14));
     /// ```
-    extern fn g_slist_append(p_list: *glib.SList, p_data: ?*anyopaque) *glib.SList;
+    extern fn g_slist_append(p_list: ?*glib.SList, p_data: ?*anyopaque) *glib.SList;
     pub const append = g_slist_append;
 
     /// Adds the second `glib.SList` onto the end of the first `glib.SList`.
@@ -9146,11 +9146,11 @@ pub const SList = extern struct {
     pub const index = g_slist_index;
 
     /// Inserts a new element into the list at the given position.
-    extern fn g_slist_insert(p_list: *glib.SList, p_data: ?*anyopaque, p_position: c_int) *glib.SList;
+    extern fn g_slist_insert(p_list: ?*glib.SList, p_data: ?*anyopaque, p_position: c_int) *glib.SList;
     pub const insert = g_slist_insert;
 
     /// Inserts a node before `sibling` containing `data`.
-    extern fn g_slist_insert_before(p_slist: *glib.SList, p_sibling: *glib.SList, p_data: ?*anyopaque) *glib.SList;
+    extern fn g_slist_insert_before(p_slist: ?*glib.SList, p_sibling: *glib.SList, p_data: ?*anyopaque) *glib.SList;
     pub const insertBefore = g_slist_insert_before;
 
     /// Inserts a new element into the list, using the given
@@ -9204,7 +9204,7 @@ pub const SList = extern struct {
     /// list = g_slist_prepend (list, "last");
     /// list = g_slist_prepend (list, "first");
     /// ```
-    extern fn g_slist_prepend(p_list: *glib.SList, p_data: ?*anyopaque) *glib.SList;
+    extern fn g_slist_prepend(p_list: ?*glib.SList, p_data: ?*anyopaque) *glib.SList;
     pub const prepend = g_slist_prepend;
 
     extern fn g_slist_push_allocator(p_allocator: *glib.Allocator) void;
@@ -18942,7 +18942,7 @@ pub const base64DecodeInplace = g_base64_decode_inplace;
 /// be written to it. Since base64 encodes 3 bytes in 4 chars you need
 /// at least: (`len` / 4) * 3 + 3 bytes (+ 3 may be needed in case of non-zero
 /// state).
-extern fn g_base64_decode_step(p_in: [*]const u8, p_len: usize, p_out: *[*]u8, p_state: *c_int, p_save: *c_uint) usize;
+extern fn g_base64_decode_step(p_in: [*]const u8, p_len: usize, p_out: [*]u8, p_state: *c_int, p_save: *c_uint) usize;
 pub const base64DecodeStep = g_base64_decode_step;
 
 /// Encode a sequence of binary data into its Base-64 stringified
@@ -26142,7 +26142,7 @@ pub const MAXUINT8 = 255;
 /// Like `gtk_micro_version`, but from the headers used at
 /// application compile time, rather than from the library
 /// linked against at application run time.
-pub const MICRO_VERSION = 1;
+pub const MICRO_VERSION = 4;
 /// The minimum value which can be held in a `gint16`.
 pub const MININT16 = -32768;
 /// The minimum value which can be held in a `gint32`.

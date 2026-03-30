@@ -267,6 +267,11 @@ pub fn build(b: *std.Build) void {
     const docs_obj = b.addObject(.{
         .name = "docs",
         .root_module = docs_mod,
+        // Defaults to false to avoid bringing in the lazy dependency if not building docs.
+        .zig_lib_dir = if (b.option(bool, "autodoc-fork", "Use Autodoc fork for documentation") orelse false) zig_lib_dir: {
+            const zig_autodoc_dep = b.lazyDependency("zig_autodoc", .{}) orelse break :zig_lib_dir null;
+            break :zig_lib_dir zig_autodoc_dep.path("lib");
+        } else null,
     });
     const install_docs = b.addInstallDirectory(.{
         .source_dir = docs_obj.getEmittedDocs(),

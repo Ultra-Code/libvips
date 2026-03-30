@@ -7,12 +7,11 @@
 
 const std = @import("std");
 
-pub fn main() !void {
-    var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena_state.deinit();
+pub fn main(init: std.process.Init) !void {
+    var arena_state = init.arena;
     const arena = arena_state.allocator();
 
-    const args = try std.process.argsAlloc(arena);
+    const args = try init.minimal.args.toSlice(arena);
 
     var output_path: ?[]const u8 = null;
     var output: std.ArrayList(u8) = .empty;
@@ -70,7 +69,7 @@ fn fmtXml(s: []const u8) std.fmt.Alt([]const u8, formatXml) {
 
 fn formatXml(s: []const u8, writer: *std.Io.Writer) std.Io.Writer.Error!void {
     var start: usize = 0;
-    while (std.mem.indexOfAnyPos(u8, s, start, "&<\"")) |pos| {
+    while (std.mem.findAnyPos(u8, s, start, "&<\"")) |pos| {
         try writer.writeAll(s[start..pos]);
         try writer.writeAll(switch (s[pos]) {
             '&' => "&amp;",
