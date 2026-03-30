@@ -1,6 +1,10 @@
 const std = @import("std");
 const Build = std.Build;
+const Io = std.Io;
+const Dir = Io.Dir;
+const mem = std.mem;
 const builtin = @import("builtin");
+
 const build_zon = @import("build.zig.zon");
 
 comptime {
@@ -13,8 +17,9 @@ const Env = enum {
 };
 
 pub fn build(b: *Build) void {
+    const io = b.graph.io;
     const env: Env = dev: {
-        const stat = std.fs.cwd().statFile(".gitattributes") catch |err| switch (err) {
+        const stat = Dir.cwd().statFile(io, ".gitattributes", .{}) catch |err| switch (err) {
             error.FileNotFound => break :dev .release,
             else => unreachable,
         };
@@ -26,7 +31,7 @@ pub fn build(b: *Build) void {
 
     const no_bin = b.option(bool, "no-bin", "skip emitting binary for incremental compilation checks") orelse false;
     const strip = b.option(bool, "strip", "Strip debug information") orelse false;
-    const lto = b.option(bool, "lto", "Enable link time optimization") orelse false;
+    const lto = b.option(std.zig.LtoMode, "lto", "Enable link time optimization") orelse .none;
     const llvm = b.option(bool, "llvm", "Use the llvm codegen backend") orelse false;
     const lld = b.option(bool, "lld", "Use the llvm's lld linker") orelse false;
     const linkage = b.option(std.builtin.LinkMode, "linkage", "Choose linkage of zvips") orelse .static;
@@ -60,10 +65,10 @@ pub fn build(b: *Build) void {
         .root_module = mod,
         .use_lld = lld,
         .use_llvm = llvm,
-        .max_rss = if (is(.wsl)) rss("97MiB") else if (is(.ubuntu)) rss("295MiB") else rss("105MiB"),
+        .max_rss = if (is(.wsl)) rss("118MiB") else if (is(.ubuntu)) rss("295MiB") else rss("105MiB"),
     });
     zvips.pie = llvm;
-    zvips.want_lto = lto;
+    zvips.lto = lto;
 
     tests.dependOn(step: {
         const tests_ = b.addTest(.{
@@ -90,12 +95,12 @@ pub fn build(b: *Build) void {
         const autodoc = b.addObject(.{
             .name = "zvips",
             .root_module = mod,
-            .max_rss = if (is(.wsl)) rss("95MiB") else if (is(.ubuntu)) rss("295MiB") else rss("220MiB"),
+            .max_rss = if (is(.wsl)) rss("112MiB") else if (is(.ubuntu)) rss("295MiB") else rss("220MiB"),
             .use_lld = lld,
             .use_llvm = llvm,
         });
         autodoc.pie = llvm;
-        autodoc.want_lto = lto;
+        autodoc.lto = lto;
 
         const install_docs = b.addInstallDirectory(.{
             .source_dir = autodoc.getEmittedDocs(),
@@ -152,8 +157,8 @@ fn is(Os: enum { wsl, ubuntu }) bool {
     if (builtin.os.tag != .linux) return false;
     const uname = std.posix.uname();
     return switch (Os) {
-        .wsl => std.mem.endsWith(u8, uname.release[0..], "WSL2"),
-        .ubuntu => std.mem.indexOf(u8, uname.version[0..], "Ubuntu") != null,
+        .wsl => return mem.endsWith(u8, mem.sliceTo(uname.release[0..], 0x0), "WSL2"),
+        .ubuntu => mem.find(u8, mem.sliceTo(uname.version[0..], 0x0), "Ubuntu") != null,
     };
 }
 

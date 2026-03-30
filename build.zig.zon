@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
         .@"zig-gobject" = .{
-            .url = "git+https://github.com/ianprime0509/zig-gobject.git#e5795f47d5dca9540d952c22625dbb4924d6915a",
-            .hash = "gobject_codegen-0.3.0-B33qzQhGBwConuGVhjM7_vBkpmcxzWNGLxx1D-3psi1Y",
+            .url = "git+https://github.com/bernardassan/zig-gobject.git#02949c753ece882cd4e1e2ab0440e462cc53bb00",
+            .hash = "gobject_codegen-0.3.1-B33qzf9-BwBNGgmEUgXa1LCKKCo5J1h8YECEb0JBNySz",
             .lazy = true,
         },
         .libvips = .{
