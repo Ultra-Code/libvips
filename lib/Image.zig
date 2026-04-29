@@ -3,7 +3,7 @@ const std = @import("std");
 const varargs = @import("varargs.zig");
 const Options = @import("Options.zig");
 const root = @import("root.zig");
-const logger = root.logger;
+const logger = std.log.scoped(.@"zvips/Image");
 const c = root.c;
 
 const Image = @This();
